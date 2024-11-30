@@ -265,3 +265,56 @@
         (ok true)
     )
 )
+
+;; Block height management functions
+(define-public (increment-block-height)
+    (begin
+        (var-set current-block-height 
+            (+ (var-get current-block-height) u1)
+        )
+        (ok true)
+    )
+)
+
+(define-public (set-block-height (new-height uint))
+    (begin
+        (var-set current-block-height new-height)
+        (ok true)
+    )
+)
+
+;; read-only functions
+;; Get current block height
+(define-read-only (get-block-height)
+    (var-get current-block-height)
+)
+
+;; Get project details
+(define-read-only (get-project-details (project-id uint))
+    (map-get? ProjectStatus { project-id: project-id })
+)
+
+;; Get milestone details
+(define-read-only (get-milestone-details (project-id uint) (milestone-id uint))
+    (map-get? ProjectMilestones 
+        { 
+            project-id: project-id, 
+            milestone-id: milestone-id 
+        }
+    )
+)
+
+;; Get milestone voting results
+(define-read-only (get-milestone-votes (project-id uint) (milestone-id uint))
+    (map-get? MilestoneVoteCount 
+        { 
+            project-id: project-id, 
+            milestone-id: milestone-id 
+        }
+    )
+
+
+
+
+
+
