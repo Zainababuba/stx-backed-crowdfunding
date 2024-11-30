@@ -81,7 +81,64 @@
     )
 )
 
+;; public functions
+;; Create a new crowdfunding project
+(define-public (create-project 
+    (project-name (string-utf8 50))
+    (funding-goal uint)
+    (milestones (list 5 { 
+        description: (string-utf8 200), 
+        target-amount: uint 
+    }))
+)
+    (let 
+        (
+            (project-id (var-get next-project-id))
+        )
+        ;; Validate project parameters
+        (asserts! (> funding-goal u0) ERR-INSUFFICIENT-FUNDS)
 
+        ;; Store project status
+        (map-set ProjectStatus 
+            { project-id: project-id }
+            {
+                total-raised: u0,
+                goal: funding-goal,
+                is-active: true,
+                creator: tx-sender
+            }
+        )
 
+        ;; Store milestones
+        (fold add-milestone milestones project-id)
 
+        ;; Increment project counter
+        (var-set next-project-id (+ project-id u1))
 
+        (ok project-id)
+    )
+)
+
+;; Cancel project by creator
+(define-public (cancel-project (project-id uint))
+    (let 
+        (
+            (project-details 
+                (unwrap! 
+                    (map-get? ProjectStatus { project-id: project-id }) 
+                    ERR-UNAUTHORIZED
+                )
+            )
+        )
+        ;; Only project creator can cancel
+        (asserts! (is-eq tx-sender (get creator project-details)) ERR-UNAUTHORIZED)
+
+        ;; Mark project as inactive
+        (map-set ProjectStatus 
+            { project-id: project-id }
+            (merge project-details { is-active: false })
+        )
+
+        (ok true)
+    )
+)
