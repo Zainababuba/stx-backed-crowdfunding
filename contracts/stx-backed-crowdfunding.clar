@@ -142,3 +142,126 @@
         (ok true)
     )
 )
+
+;; Add voting mechanism for milestone validation
+(define-public (vote-on-milestone
+    (project-id uint)
+    (milestone-id uint)
+    (vote-type bool)
+)
+    (let 
+        (
+            ;; Check if voter has already voted
+            (existing-vote 
+                (map-get? MilestoneVotes 
+                    { 
+                        project-id: project-id, 
+                        milestone-id: milestone-id, 
+                        voter: tx-sender 
+                    }
+                )
+            )
+            ;; Get current vote count
+            (current-votes 
+                (default-to 
+                    { 
+                        approve-votes: u0, 
+                        reject-votes: u0,
+                        total-voters: u0 
+                    }
+                    (map-get? MilestoneVoteCount 
+                        { 
+                            project-id: project-id, 
+                            milestone-id: milestone-id 
+                        }
+                    )
+                )
+            )
+        )
+        ;; Prevent double voting
+        (asserts! (is-none existing-vote) ERR-ALREADY-VOTED)
+
+        ;; Record individual vote
+        (map-set MilestoneVotes
+            { 
+                project-id: project-id, 
+                milestone-id: milestone-id, 
+                voter: tx-sender 
+            }
+            { voted: true }
+        )
+
+        ;; Update vote counts
+        (map-set MilestoneVoteCount
+            { 
+                project-id: project-id, 
+                milestone-id: milestone-id 
+            }
+            (if vote-type
+                {
+                    approve-votes: (+ (get approve-votes current-votes) u1),
+                    reject-votes: (get reject-votes current-votes),
+                    total-voters: (+ (get total-voters current-votes) u1)
+                }
+                {
+                    approve-votes: (get approve-votes current-votes),
+                    reject-votes: (+ (get reject-votes current-votes) u1),
+                    total-voters: (+ (get total-voters current-votes) u1)
+                }
+            )
+        )
+
+        (ok true)
+    )
+)
+
+;; Finalize milestone based on voting results
+(define-public (finalize-milestone
+    (project-id uint)
+    (milestone-id uint)
+)
+    (let 
+        (
+            (vote-results 
+                (unwrap! 
+                    (map-get? MilestoneVoteCount 
+                        { 
+                            project-id: project-id, 
+                            milestone-id: milestone-id 
+                        }
+                    )
+                    ERR-UNAUTHORIZED
+                )
+            )
+            (milestone-details 
+                (unwrap! 
+                    (map-get? ProjectMilestones 
+                        { 
+                            project-id: project-id, 
+                            milestone-id: milestone-id 
+                        }
+                    )
+                    ERR-UNAUTHORIZED
+                )
+            )
+        )
+        ;; Validate milestone can be finalized
+        (asserts! 
+            (>= (get approve-votes vote-results) 
+                (/ (get total-voters vote-results) u2)
+            ) 
+            ERR-INVALID-VOTE
+        )
+
+        ;; Mark milestone as completed
+        (map-set ProjectMilestones
+            { 
+                project-id: project-id, 
+                milestone-id: milestone-id 
+            }
+            (merge milestone-details { is-completed: true })
+        )
+
+        (ok true)
+    )
+)
