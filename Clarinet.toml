@@ -1,0 +1,23 @@
+[project]
+name = "stx-backed-crowdfunding"
+authors = []
+description = ""
+telemetry = true
+requirements = []
+cache_dir = "/home/runner/stx-backed-crowdfunding/stx-backed-crowdfunding/./.requirements"
+boot_contracts = ["pox", "costs-v2", "bns"]
+[contracts.stx-backed-crowdfunding]
+path = "contracts/stx-backed-crowdfunding.clar"
+
+[repl]
+costs_version = 2
+parser_version = 2
+
+[repl.analysis]
+passes = ["check_checker"]
+
+[repl.analysis.check_checker]
+strict = false
+trusted_sender = false
+trusted_caller = false
+callee_filter = false
